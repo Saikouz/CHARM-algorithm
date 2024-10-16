@@ -1,0 +1,41 @@
+import numpy as np
+import torchvision.transforms.functional as TF
+
+class charm:
+    def __init__(self, n_ch, unit_sz, stride):
+        self.n_ch = n_ch
+        self.unit_sz = unit_sz
+        self.stride = stride
+
+    # The function is used to divide the whole images to blocks, based on the stride and the size
+    def create_chopedImg(self, img):
+        chopedImg = []
+        for i in range(self.n_ch):
+            im = TF.to_tensor(img[:, :, i].astype(float))
+            patches = im.unfold(1, self.unit_sz, self.stride[0]).unfold(2, self.unit_sz, self.stride[1])
+            chopedImg.append(patches.reshape(-1, self.unit_sz, self.unit_sz).numpy())
+        return np.array(chopedImg)
+
+    # Main algorithm based on the channel distance, that is the farther away from the target channel, the smaller the spillover coefficient will be
+    def algorithm(self, max_values_indices, max_index, mean_intensity):
+        co = np.where(max_values_indices == max_index)[0]
+        valid_col = []
+        for col in co:
+            column = mean_intensity[:, col]
+            satisfies_condition = True
+            for i in range(len(column)):
+                if i == max_index:
+                    continue
+
+                if i < max_index:
+                    if column[i] > column[i + 1]:
+                        satisfies_condition = False
+                        break
+                else:
+                    if column[i] > column[i - 1]:
+                        satisfies_condition = False
+                        break
+            if satisfies_condition:
+                valid_col.append(col)
+                print(f"Column {col} satisfies the condition.")
+        return valid_col
